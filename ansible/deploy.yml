@@ -1,0 +1,45 @@
+---
+- name: Deploy Web Application
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Install npm
+      apt:
+        name: npm
+        state: present
+
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    - name: Clone the repository
+      git:
+        repo: 'https://github.com/*******************.git'
+        dest: /home/ubuntu/webapp
+        version: main
+
+    - name: Install backend dependencies
+      npm:
+        path: /home/ubuntu/webapp/backend
+        state: present
+
+    - name: Build frontend
+      command: npm run build
+      args:
+        chdir: /home/ubuntu/webapp/frontend
+
+    - name: Start the backend
+      command: npm start
+      args:
+        chdir: /home/ubuntu/webapp/backend
