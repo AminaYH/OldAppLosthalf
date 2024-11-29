@@ -2,44 +2,80 @@
 - name: Deploy Web Application
   hosts: all
   become: yes
+  vars:
+    app_directory: /home/ubuntu/webapp
+    backend_directory: "{{ app_directory }}/backend"
+    frontend_directory: "{{ app_directory }}/frontend"
+    node_version: "14.x" 
+    git_repo: "https://github.com/*******************.git"
+    git_branch: "main"
+    pm2_package: "pm2" 
 
   tasks:
     - name: Update apt cache
       apt:
         update_cache: yes
 
-    - name: Install Node.js
+    - name: Install Node.js and NPM
       apt:
-        name: nodejs
+        name: "{{ item }}"
         state: present
+      loop:
+        - curl
+        - git
+        - nodejs
+        - npm
 
-    - name: Install npm
-      apt:
-        name: npm
-        state: present
+    - name: Add NodeSource repository for Node.js (if not already installed)
+      shell: curl -sL https://deb.nodesource.com/setup_{{ node_version }} | bash -
+      when: ansible_facts.packages.nodejs is not defined
 
-    - name: Install Git
-      apt:
-        name: git
-        state: present
+    - name: Install PM2 (Process Manager)
+      npm:
+        name: "{{ pm2_package }}"
+        global: yes
 
     - name: Clone the repository
       git:
-        repo: 'https://github.com/*******************.git'
-        dest: /home/ubuntu/webapp
-        version: main
+        repo: "{{ git_repo }}"
+        dest: "{{ app_directory }}"
+        version: "{{ git_branch }}"
 
     - name: Install backend dependencies
       npm:
-        path: /home/ubuntu/webapp/backend
+        path: "{{ backend_directory }}"
+        state: present
+
+    - name: Install frontend dependencies
+      npm:
+        path: "{{ frontend_directory }}"
         state: present
 
     - name: Build frontend
       command: npm run build
       args:
-        chdir: /home/ubuntu/webapp/frontend
+        chdir: "{{ frontend_directory }}"
 
-    - name: Start the backend
-      command: npm start
+    - name: 
+      copy:
+        src: "{{ frontend_directory }}/dist/"
+        dest: "/var/www/html/" 
+        mode: '0755'
+        remote_src: yes
+
+    - name: Start backend with PM2
+      command: pm2 start npm --name "backend-app" -- start
       args:
-        chdir: /home/ubuntu/webapp/backend
+        chdir: "{{ backend_directory }}"
+
+    - name: Save PM2 process list
+      command: pm2 save
+
+    - name: Enable PM2 to start on reboot
+      command: pm2 startup systemd
+
+    - name: Ensure web server (e.g., Nginx) is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
