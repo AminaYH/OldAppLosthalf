@@ -3,9 +3,9 @@ provider "aws" {
 }
 
 resource "aws_instance" "app_server" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Replace with an Amazon Linux 2 AMI ID or your preferred AMI
+  ami           = "ami-****" 
   instance_type = "t2.micro"
-  key_name      = "your-ssh-key"  # Replace with your SSH key name
+  key_name      = "*********" 
 
   security_group {
     name_prefix = "webapp-sg"
